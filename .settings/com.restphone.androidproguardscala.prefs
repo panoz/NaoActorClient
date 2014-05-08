@@ -1,0 +1,4 @@
+eclipse.preferences.version=1
+jarfile_config-1.0.0.jar_akka=inputjar
+jarfile_netty-3.5.8.Final.jar_akka=inputjar
+jarfile_protobuf-java-2.4.1.jar_akka=inputjar

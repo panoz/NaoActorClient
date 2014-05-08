@@ -1,0 +1,27 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+    android:id="@+id/action_say"
+    android:orderInCategory="100"
+    android:showAsAction="always"
+    android:title="@string/action_say"/>
+<!--     <item -->
+<!--     android:id="@+id/action_standup_sitdown" -->
+<!--     android:orderInCategory="101" -->
+<!--     android:showAsAction="always" -->
+<!--     android:title="@string/action_sitdown" -->
+<!--     android:enabled="false"/> -->
+    
+    <item
+        android:id="@+id/languages"
+        android:showAsAction="never"
+        android:title="@string/languages_menu">
+        <group
+            android:id="@+id/languages_group"
+            android:checkableBehavior="single" >
+            <menu>
+            </menu>
+        </group>
+    </item>
+
+</menu>
