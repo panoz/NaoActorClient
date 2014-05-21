@@ -32,15 +32,16 @@ import android.widget.Button
 import android.view.MotionEvent
 import android.view.MotionEvent
 import java.io.ByteArrayInputStream
-
-import com.example.naoactorclient.R;
-
+import com.example.naoactorclient.R
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.BitmapFactory
 import android.widget.ImageView
 import android.graphics.drawable.ShapeDrawable
 import android.view.ViewTreeObserver
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
+import android.widget.ToggleButton
+import android.view.View.OnClickListener
+import robots.naoactorclient.localactors.SupervisorActor
 
 class MainActivity extends Activity {
 
@@ -60,6 +61,41 @@ class MainActivity extends Activity {
   var textToSpeechLanguages = Array[String]()
   var textToSpeechLanguage = ""
   var language2idMap = collection.mutable.Map[String, Int]()
+
+  val actor = Actors.system.actorOf(Props[SupervisorActor], "supervisorActor")
+  actor ! activity
+  actor ! Actors.remoteActor
+
+  var headStiffnessButton: ToggleButton = null
+
+  private var headStiffnesses = List(0.0d)
+  private var _headStiffness = false
+  def headStiffness = _headStiffness
+  def headStiffness_=(b: Boolean) = {
+    _headStiffness = b
+    mainFrame.post(new Runnable {
+      override def run {
+        headStiffnessButton.setChecked(headStiffness)
+      }
+    })
+  }
+
+  var _goToPostureInProgress = false
+  def goToPostureInProgress = _goToPostureInProgress
+  def goToPostureInProgress_=(b: Boolean) {
+    _goToPostureInProgress = b
+    if (b) {
+      setHeadStiffnessButtonEnabled(false)
+      //disable all buttons
+    } else {
+      //enable all buttons ?
+    }
+  }
+
+  var hasInitializedPosition = false
+
+  val VIDEO_ENABLED = true
+  val STIFFNESS_OFF_AFTER_SITDOWN = true
 
   override def onCreate(savedInstanceState: Bundle) {
     super.onCreate(savedInstanceState)
@@ -88,9 +124,20 @@ class MainActivity extends Activity {
       }
     })
 
-    val actor = Actors.system.actorOf(Props[GetTextToSpeechLanguagesActor], "getLanguagesActor")
-    actor ! this
-    actor ! RobotRequest("TextToSpeech", "getAvailableLanguages")
+    headStiffnessButton = findViewById(R.id.headStiffnessButton).asInstanceOf[ToggleButton]
+    headStiffnessButton.setEnabled(false)
+    headStiffnessButton.setOnClickListener(new OnClickListener {
+      override def onClick(v: View) {
+        if (headStiffness) {
+          actor ! 'SetHeadStiffnessOff
+        } else {
+          actor ! 'SetHeadStiffnessOn
+        }
+      }
+    })
+
+    actor ! 'GetHeadStiffness
+    actor ! 'GetTextToSpeechLanguages
 
     val STEP_FREQUENCY = 1.0d
 
@@ -98,9 +145,13 @@ class MainActivity extends Activity {
       override def onTouch(v: View, event: MotionEvent) = {
         if (event.getAction == MotionEvent.ACTION_DOWN || event.getAction == MotionEvent.ACTION_MOVE) {
           val viewWidthWithoutMargin = viewWidth(v) - 2 * getResources.getDimension(R.dimen.shape_imageview_padding)
-          val viewHeightWithoutMargin = viewWidth(v) - 2 * getResources.getDimension(R.dimen.shape_imageview_padding)
+          val viewHeightWithoutMargin = viewHeight(v) - 2 * getResources.getDimension(R.dimen.shape_imageview_padding)
           if (xAxis != null) xAxis.value = (2 * event.getX - viewWidth(v)) / viewWidthWithoutMargin
           if (yAxis != null) yAxis.value = (2 * event.getY - viewHeight(v)) / viewHeightWithoutMargin
+          true
+        } else if (event.getAction == MotionEvent.ACTION_UP) {
+          if (xAxis != null) xAxis.value = 0.0
+          if (yAxis != null) yAxis.value = 0.0
           true
         } else false
       }
@@ -109,6 +160,8 @@ class MainActivity extends Activity {
     walkImageView.setOnTouchListener(new AxisTouchListener(TouchableAxis.x1, TouchableAxis.y1))
     headImageView.setOnTouchListener(new AxisTouchListener(TouchableAxis.x2, TouchableAxis.y2))
     rotateImageView.setOnTouchListener(new AxisTouchListener(TouchableAxis.x3, null))
+
+    InputControl
   }
 
   override def onCreateOptionsMenu(menu: Menu) = {
@@ -116,7 +169,7 @@ class MainActivity extends Activity {
 
     val submenu = menu.findItem(R.id.languages).getSubMenu
     submenu.clear
-import Menu.NONE
+    import Menu.NONE
     textToSpeechLanguages.foreach(str => {
       var id = Menu.FIRST
       submenu.add(languages_group, id, NONE, str)
@@ -132,7 +185,7 @@ import Menu.NONE
     if (item.getGroupId == languages_group && !item.hasSubMenu) {
       textToSpeechLanguage = item.getTitle.toString
       item.setChecked(true)
-      Actors.remoteActor ! RobotRequest("TextToSpeech", "setLanguage", item.getTitle.toString)
+      actor ! localactors.SetLanguage(item.getTitle.toString)
     } else if (item.getItemId == R.id.action_say) {
       openSayDialog
     }
@@ -141,6 +194,7 @@ import Menu.NONE
 
   override def onPause() {
     Sensors.unregisterListener
+    InputControl.stop
     super.onPause
   }
 
@@ -156,9 +210,30 @@ import Menu.NONE
     Sensors.registerListener
   }
 
+  def sitDown(v: View) {
+    actor ! 'SitDown
+  }
+
+  def standUp(v: View) {
+    actor ! 'StandUp
+  }
+
   def setTextToSpeechLanguages(lang: Array[String]) = {
     textToSpeechLanguages = lang
     invalidateOptionsMenu
+  }
+
+  def setHeadStiffnesses(s: List[Double]) = {
+    headStiffnesses = s
+    headStiffness = (s.forall(_ == 1.0))
+  }
+
+  def setHeadStiffnessButtonEnabled(b: Boolean) {
+    mainFrame.post(new Runnable {
+      def run {
+        headStiffnessButton.setEnabled(b)
+      }
+    })
   }
 
   private def openSayDialog {
@@ -169,7 +244,7 @@ import Menu.NONE
       .setPositiveButton("Say", new DialogInterface.OnClickListener {
         def onClick(dialog: DialogInterface, whichButton: Int) {
           val value = input.getText
-          Actors.remoteActor ! RobotRequest("TextToSpeech", "say", value.toString)
+          actor ! localactors.Say(value.toString)
         }
       }).setNegativeButton("Cancel", new DialogInterface.OnClickListener {
         def onClick(dialog: DialogInterface, whichButton: Int) {
@@ -195,13 +270,13 @@ import Menu.NONE
 
     private val executor = Executors.newScheduledThreadPool(1)
 
-    val getImageActor = Actors.system.actorOf(Props[GetImageActor], "getImageActor")
-    getImageActor ! MainActivity.this
-    getImageActor ! RobotRequest("VideoDevice", "setResolution", robots.common.Resolution.QVGA)
+    actor ! localactors.SetResolution(robots.common.Resolution.QVGA)
 
     private val future = executor.scheduleWithFixedDelay(new Runnable() {
       override def run() {
-        getImageActor ! RobotRequest("VideoDevice", "getImage")
+        if (VIDEO_ENABLED) {
+          actor ! 'GetImage
+        }
       }
     }, 0, REFRESH_RATE, TimeUnit.MILLISECONDS);
 
@@ -234,27 +309,40 @@ import Menu.NONE
   }
 
   private object InputControl {
-    val REFRESH_RATE = 200
+    import Math.PI
+
+    val REFRESH_RATE = 500
 
     val HEAD_SPEED = 1.0d
+    val WALK_SPEED = 1.0d
 
-    val MIN_PITCH = -38.5d
-    val MAX_PITCH = 29.5d
+    val MIN_PITCH = -38.5d / 180 * PI
+    val MAX_PITCH = 29.5d / 180 * PI
 
-    val MIN_YAW = -119.5d
-    val MAX_YAW = 119.5d
+    val MIN_YAW = -119.5d / 180 * PI
+    val MAX_YAW = 119.5d / 180 * PI
 
     private val executor = Executors.newScheduledThreadPool(1)
     private val future = executor.scheduleWithFixedDelay(new Runnable() {
       override def run() {
-        // head
-        val yaw = Utils.between(MIN_YAW, TouchableAxis.x2.value * MAX_YAW, MAX_YAW)
-        val pitch = TouchableAxis.y2.value
-        Log.d("InputControl", "Motion setAngles HeadYaw/HeadPitch " + yaw + "/" + pitch)
-        Actors.remoteActor ! RobotRequest("Motion", "setAngles", List("HeadYaw", "HeadPitch"), List(yaw, pitch), HEAD_SPEED)
+        if (hasInitializedPosition && !goToPostureInProgress) {
+          // head
+          val yaw = -Utils.between(MIN_YAW, TouchableAxis.x2.value * MAX_YAW, MAX_YAW)
+          val pitch = TouchableAxis.y2.value
+          actor ! localactors.SetHeadAngles(yaw, pitch, HEAD_SPEED)
+
+          // walk + rotate
+          val walkX = -TouchableAxis.x1.value
+          val walkY = -TouchableAxis.y1.value
+          val rotate = -TouchableAxis.x3.value
+          actor ! localactors.SetWalkVelocity(walkX, walkY, rotate, WALK_SPEED)
+        }
       }
     }, 0, REFRESH_RATE, TimeUnit.MILLISECONDS);
 
+    def stop {
+      future.cancel(true)
+    }
   }
 
   private object TouchableAxis {
@@ -283,7 +371,6 @@ import Menu.NONE
       sensorManager = getSystemService(Context.SENSOR_SERVICE).asInstanceOf[SensorManager]
       accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
       magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-
     }
 
     def registerListener {

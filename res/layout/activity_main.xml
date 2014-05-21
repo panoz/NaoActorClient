@@ -20,13 +20,15 @@
             android:id="@+id/standUpButton"
             android:layout_column="0"
             android:layout_row="1"
-            android:text="@string/standUpButtonText" />
+            android:text="@string/standUpButtonText"
+            android:onClick="standUp" />
 
         <Button
             android:id="@+id/sitDownButton"
             android:layout_column="0"
             android:layout_row="2"
-            android:text="@string/sitDownButtonText" />
+            android:text="@string/sitDownButtonText"
+            android:onClick="sitDown" />
 
         <TextView
             android:id="@+id/stiffnessLabel"
@@ -34,29 +36,25 @@
             android:layout_row="0"
             android:text="@string/stiffnessLabelText" />
 
-        <Button
+        <ToggleButton
             android:id="@+id/headStiffnessButton"
             android:layout_column="1"
             android:layout_row="1"
-            android:text="@string/headStiffnessButtonText" />
+            android:textOn="@string/headStiffnessButtonText"
+            android:textOff="@string/headStiffnessButtonText" />
 
-        <Button
-            android:id="@+id/bodyStiffnessButton"
-            android:layout_column="1"
-            android:layout_row="2"
-            android:text="@string/bodyStiffnessButtonText" />
+<!--         <ToggleButton -->
+<!--             android:id="@+id/bodyStiffnessButton" -->
+<!--             android:layout_column="1" -->
+<!--             android:layout_row="2" -->
+<!--             android:textOn="@string/bodyStiffnessButtonText" -->
+<!--             android:textOff="@string/bodyStiffnessButtonText" /> -->
 
         <Button
             android:id="@+id/recalSensorsButton"
             android:layout_column="2"
             android:layout_row="1"
             android:text="@string/recalSensorsButtonText" />
-
-        <Button
-            android:id="@+id/followHeadButton"
-            android:layout_column="2"
-            android:layout_row="2"
-            android:text="@string/followHeadButtonText" />
     </GridLayout>
 
     <RelativeLayout

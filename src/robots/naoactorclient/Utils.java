@@ -42,6 +42,6 @@ public class Utils {
 	}
 
 	public static double between(double min, double x, double max) {
-		return Math.min(min, Math.max(x, max));
+		return Math.max(min, Math.min(x, max));
 	}
 }
