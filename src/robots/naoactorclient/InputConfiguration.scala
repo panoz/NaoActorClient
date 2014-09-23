@@ -1,4 +1,4 @@
-package robots.naoactorclient;
+//package robots.naoactorclient;
 //package com.example.naoactorclient
 //
 //trait InputConfiguration {

@@ -6,60 +6,84 @@ import scala.util.Success
 import scala.util.Failure
 import android.util.Log
 import akka.actor.actorRef2Scala
-import robots.naoactorclient.Actors
 import robots.naoactorclient.MainActivity
 import akka.actor.Props
 import akka.actor.ActorRef
+import android.os.Messenger
+import akka.actor.ActorLogging
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import akka.pattern.ask
+import scala.concurrent.ExecutionContext.Implicits.global
+import akka.actor.ReceiveTimeout
 
-class SupervisorActor extends Actor with LocalActor {
+class SupervisorActor extends Actor {
+  import context.{ become, unbecome, system, setReceiveTimeout }
   val TAG = "SupervisorActor"
-  val getHeadStiffnessesActor = context.actorOf(Props[GetHeadStiffnessesActor], "getHeadStiffnessesActor")
-  val getImageActor = context.actorOf(Props[GetImageActor], "getImageActor")
-  val getTextToSpeechLanguagesActor = context.actorOf(Props[GetTextToSpeechLanguagesActor], "getTextToSpeechLanguagesActor")
-  val noReplyActor = context.actorOf(Props[NoReplyActor], "noReplyActor")
-  val sitDownActor = context.actorOf(Props[SitDownActor], "sitDownActor")
-  val standUpActor = context.actorOf(Props[StandUpActor], "standUpActor")
+  implicit val CONNECTING_TIMEOUT = new Timeout(2, SECONDS)
+  val SHUTDOWN_TIMEOUT = Duration(30, SECONDS)
 
-  def receive = {
-    case ma: MainActivity ⇒ {
-      mainActivity = ma
-      getHeadStiffnessesActor ! ma
-      getImageActor ! ma
-      getTextToSpeechLanguagesActor ! ma
-      sitDownActor ! ma
-      standUpActor ! ma
-    }
-    case rem: ActorRef ⇒ {
-      remoteActor = rem
-      getHeadStiffnessesActor ! rem
-      getImageActor ! rem
-      getTextToSpeechLanguagesActor ! rem
-      sitDownActor ! rem
-      standUpActor ! rem
-      noReplyActor ! rem
+  private var remoteActor: ActorRef = null
 
+  def notConnected: Receive = {
+    case c: Connect => {
+      val remActor = context.actorFor(c.address)
+      val future = akka.pattern.ask(remActor, None)
+      import scala.concurrent.ExecutionContext.Implicits.global
+      Await.ready(future, 2 seconds)
+      future.value match {
+        case s: Some[_] => s.get match {
+          case _: Success[_] => {
+            remoteActor = remActor
+            sender ! Connected
+            become(connected, true)
+            setReceiveTimeout(SHUTDOWN_TIMEOUT)
+          }
+          case _: Failure[_] => sender ! new ConnectionFailedException
+        }
+        case None =>
+      }
     }
-    case 'GetHeadStiffness ⇒ getHeadStiffnessesActor ! 'GetHeadStiffness
-    case 'SetHeadStiffnessOn ⇒ noReplyActor ! 'SetHeadStiffnessOn
-    case 'SetHeadStiffnessOff ⇒ noReplyActor ! 'SetHeadStiffnessOff
-    case 'GetImage ⇒ getImageActor ! 'GetImage
-    case x: SetResolution ⇒ noReplyActor ! x
-    case 'GetTextToSpeechLanguages ⇒ getTextToSpeechLanguagesActor ! 'GetTextToSpeechLanguages
-    case 'SitDown ⇒ sitDownActor ! 'SitDown
-    case 'StandUp ⇒ standUpActor ! 'StandUp
-    case x: SetHeadAngles => noReplyActor ! x
-    case x: SetWalkVelocity => noReplyActor ! x
-    case x: Say => noReplyActor ! x
-    case x: SetLanguage => noReplyActor ! x
-    case _ ⇒
+    case Shutdown => {
+      Log.i(TAG, "ActorSystem Shutdown")
+      system.shutdown
+    }
+
+    case _ => sender ! NotConnectedException
   }
-  def shutdown {
-    sitDownActor ! 'SitDown
+
+  def connected: Receive = {
+    //    case mes: Messenger ⇒ {
+    //      replyMessenger = mes
+    //    }
+
+    case r: RobotRequest => {
+      remoteActor forward r
+    }
+
+    case Shutdown => {
+      remoteActor ! RobotRequest("RobotPosture", "goToPosture", "Sit", 1.0d)
+      Log.i(TAG, "ActorSystem Shutdown")
+      system.shutdown
+    }
+
+    case ReceiveTimeout => {
+      Log.w(TAG, "Timeout received")
+      self ! Shutdown
+    }
+
+    case _: Connect => sender ! new AlreadyConnectedException
+
+    case _ =>
   }
+  def receive = notConnected
 }
 
-case class SetResolution(resolution: robots.common.Resolution.Value)
-case class SetHeadAngles(yaw: Double, pitch: Double, speed: Double)
-case class SetWalkVelocity(x: Double, y: Double, rotate: Double, frequency: Double)
-case class Say(text: String)
-case class SetLanguage(lang: String)
+case class Connect(address: String)
+case object Shutdown
+case object Connected
+case class NotConnectedException extends Exception
+case class ConnectionFailedException extends Exception
+case class AlreadyConnectedException extends Exception

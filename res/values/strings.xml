@@ -10,6 +10,9 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="hello_world">Hello world!</string>
     <string name="actor_system">NaoActorClient</string>
+    <string name="remote_actor_system">NaoActor</string>
+    <string name="remote_actor_port">2552</string>
+    <string name="remote_actor">nao</string>
     <string name="connection_error">"Connection error"</string>
     <string name="connecting">"Connecting..."</string>
     <string name="connected">"Connected"</string>
