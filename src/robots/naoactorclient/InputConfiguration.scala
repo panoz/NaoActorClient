@@ -1,15 +1,26 @@
-//package robots.naoactorclient;
-//package com.example.naoactorclient
-//
-//trait InputConfiguration {
-//  type InputAxis = Any
-//  val walk: InputAxis
-//  val strafe: InputAxis
-//  val rotate: InputAxis
-//  val headPitch: InputAxis
-//  val headYaw: InputAxis
-//  def isValid = {
-//    List(walk, strafe, rotate, headPitch, headYaw).forall(_ != null) &&
-//      Set(walk, strafe, rotate, headPitch, headYaw).size == 5
-//  }
-//}
+package robots.naoactorclient
+
+import NaoAxes._
+import InputAxes._
+import DeviceMode._
+
+object InputConfiguration {
+  val config_table = Map(
+    moveX -> -Touchable.Push.xWalkArea,
+    moveY -> -Touchable.Push.yWalkArea,
+    rotate -> -Touchable.Push.xRotateArea,
+    headPitch -> -Touchable.Scroll.yMove,
+    headYaw -> Touchable.Scroll.xMove)
+
+  val config_handheld = Map(
+    moveX -> -Touchable.Push.xWalkArea,
+    moveY -> -Touchable.Push.yWalkArea,
+    rotate -> -Touchable.Push.xRotateArea,
+    headPitch -> Sensors.pitch,
+    headYaw -> -Sensors.azimuth)
+
+  def currentConfig(deviceMode: DeviceMode) = deviceMode match {
+    case Handheld => config_handheld
+    case Table => config_table
+  }
+}

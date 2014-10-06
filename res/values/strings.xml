@@ -4,17 +4,11 @@
     <string name="app_name">NaoActorClient</string>
     <string name="action_say">Say</string>
     <string name="languages_menu">Languages</string>
-<!--     <string name="action_sitdown">SitDown</string> -->
     <string name="naoactor_address">NaoActor address:</string>
     <string name="connect_button">Connect</string>
     <string name="title_activity_main">MainActivity</string>
-    <string name="hello_world">Hello world!</string>
-    <string name="actor_system">NaoActorClient</string>
-    <string name="remote_actor_system">NaoActor</string>
-    <string name="remote_actor_port">2552</string>
-    <string name="remote_actor">nao</string>
     <string name="connection_error">"Connection error"</string>
-    <string name="connecting">"Connecting..."</string>
+    <string name="connecting">"Connecting&#8230;"</string>
     <string name="connected">"Connected"</string>
     <string name="invalid_address">"Invalid IP address"</string>
 	<string name="standUpButtonText">StandUp</string>
@@ -22,9 +16,10 @@
 	<string name="stiffnessLabelText">Stiffness:</string>
 	<string name="headStiffnessButtonText">Head</string>
 	<string name="bodyStiffnessButtonText">Body</string>
-	<string name="recalSensorsButtonText">Recal Sensors</string>
-	<string name="followHeadButtonText">Follow Head</string>
+	<string name="handheldModeText">Mode: Handheld</string>
+	<string name="tableModeText">Mode: Table</string>
 	<string name="walkImageViewDescription">walk</string>
 	<string name="headImageViewDescription">move_head</string>
 	<string name="rotateImageViewDescription">rotate</string>
+	<string name="disconnectAndExitText">Disconnect and exit</string>
 </resources>
